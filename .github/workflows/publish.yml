@@ -18,5 +18,4 @@ jobs:
       - name: Build Docker image
         run: |
           docker build . --tag ghcr.io/dutrieum/tp-devops:staging
-          docker run ghcr.io/dutrieum/tp-devops:staging
           docker push ghcr.io/dutrieum/tp-devops:staging
