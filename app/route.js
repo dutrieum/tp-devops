@@ -2,6 +2,8 @@ const formValidator = require('./form_validator');
 const photoModel = require('./photo_model');
 
 const {PubSub} = require('@google-cloud/pubsub');
+const { Storage } = require('@google-cloud/storage');
+// let lastTagsUploaded = '';
 
 async function getImages(tags, tagmode, res, zip = false) {
   const ejsLocalVariables = {
@@ -60,12 +62,28 @@ function route(app) {
     const tags = req.query.tags;
     const tagmode = req.query.tagmode;
     await getImages(tags, tagmode, res);
+
+    // if (lastTagsUploaded !== tags) {
+    //   const options = {
+    //     action: 'read',
+    //     expires: moment().add(2, 'days').unix() * 1000
+    //   };
+
+    //   let storage = new Storage();
+    //   const signedUrls = await storage
+    //     .bucket(process.env.BUCKET)
+    //     .file('public/users/' + 'test-9.zip')
+    //     .getSignedUrl(options);
+
+    //   console.log('signedUrls', signedUrls);
+    // }
   });
 
   app.post('/zip', async(req, res) => {
-    const tags = req.query.tags;
-    const tagmode = req.query.tagmode;
+    const tags = req.body.tags;
+    const tagmode = req.body.tagmode;
     await getImages(tags, tagmode, res, true);
+    // lastTagsUploaded = tags;
   });
 }
 

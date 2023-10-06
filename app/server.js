@@ -11,6 +11,7 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(favicon(path.join(__dirname, 'public/images', 'favicon.ico')));
 app.use('/coverage', express.static(path.join(__dirname, '..', 'coverage')));
+app.use(express.json());
 
 // ejs for view templates
 app.engine('.html', require('ejs').__express);
