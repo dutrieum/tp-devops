@@ -11,5 +11,29 @@
         </p>
       </div>
     </footer>
+
+    <script type="text/javascript">
+      const tags = '<%= tagsParameter %>';
+      const tagmode = '<%= tagmodeParameter %>';
+      const params = {
+        tags: tags,
+        tagmode: tagmode
+      };
+
+      const downloadZipButton = document.querySelector('.download-zip');
+      if (downloadZipButton) {
+        downloadZipButton.addEventListener('click', () => {
+          fetch("/zip", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(params),
+          }).catch((error) => {
+            console.error("Error:", error);
+          });
+        })
+      }
+    </script>
   </body>
 </html>
