@@ -1,17 +1,19 @@
 const formValidator = require('./form_validator');
 const photoModel = require('./photo_model');
+const moment = require('moment');
 
 const {PubSub} = require('@google-cloud/pubsub');
 const { Storage } = require('@google-cloud/storage');
-// let lastTagsUploaded = '';
+let lastTagsUploaded = '';
 
-async function getImages(tags, tagmode, res, zip = false) {
+async function getImages(tags, tagmode, res, zip = false, downloadURL = '') {
   const ejsLocalVariables = {
     tagsParameter: tags || '',
     tagmodeParameter: tagmode || '',
     photos: [],
     searchResults: false,
-    invalidParameters: false
+    invalidParameters: false,
+    downloadURL: downloadURL
   };
 
   // if no input params are passed in then render the view with out querying the api
@@ -57,33 +59,41 @@ async function quickstart(tags, tagmode) {
     .publishMessage({data: dataBuffer});
 }
 
+async function getSignedURL() {
+  const options = {
+    action: 'read',
+    expires: moment().add(2, 'days').unix() * 1000
+  };
+
+  let storage = new Storage();
+  const signedUrls = await storage
+    .bucket(process.env.BUCKET)
+    .file('public/users/' + 'test-9.zip')
+    .getSignedUrl(options);
+
+  return signedUrls;
+}
+
 function route(app) {
   app.get('/', async (req, res) => {
     const tags = req.query.tags;
     const tagmode = req.query.tagmode;
-    await getImages(tags, tagmode, res);
+    let url = '';
 
-    // if (lastTagsUploaded !== tags) {
-    //   const options = {
-    //     action: 'read',
-    //     expires: moment().add(2, 'days').unix() * 1000
-    //   };
+    // console.log('lastTagsUploaded', lastTagsUploaded, tags);
+    if (lastTagsUploaded === tags) {
+      const urls = await getSignedURL();
+      url = urls[0];
+    }
 
-    //   let storage = new Storage();
-    //   const signedUrls = await storage
-    //     .bucket(process.env.BUCKET)
-    //     .file('public/users/' + 'test-9.zip')
-    //     .getSignedUrl(options);
-
-    //   console.log('signedUrls', signedUrls);
-    // }
+    await getImages(tags, tagmode, res, false, url);
   });
 
   app.post('/zip', async(req, res) => {
     const tags = req.body.tags;
     const tagmode = req.body.tagmode;
     await getImages(tags, tagmode, res, true);
-    // lastTagsUploaded = tags;
+    lastTagsUploaded = tags;
   });
 }
 
