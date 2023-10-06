@@ -3,9 +3,14 @@
 <div class="panel panel-default search-results">
   <div class="panel-heading">
     <h3 class="panel-title">Search Results</h3>
+
+    <button type="button" class="btn btn-primary download-zip mt-4">Générer le zip de 10 images</button>
+
+    <% if (downloadURL) { %>
+      <a href="<%= downloadURL %>" target="_blank">Télécharger le zip</a>
+    <% } %>
   </div>
   <div class="panel-body">
-
     <% if (photos.length) { %>
 
       <ul>
