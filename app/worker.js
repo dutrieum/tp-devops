@@ -3,6 +3,7 @@ const { Storage } = require('@google-cloud/storage');
 const request = require('request');
 const ZipStream = require('zip-stream');
 const photoModel = require('./photo_model');
+const { getDatabase } = require("firebase-admin/database");
 
 const pubSubClient = new PubSub();
 
@@ -15,8 +16,11 @@ function listenForMessages(subscriptionNameOrId = 'dmii2-9', timeout = 60) {
     console.log(`Received message ${message.id}:`);
     console.log(`\tData: ${message.data}`);
 
+    const tags = JSON.parse(message.data)[0];
+    const tagmode = JSON.parse(message.data)[1];
+
     let storage = new Storage();
-    const stream = await getStorageStream(storage);
+    const stream = await getStorageStream(storage, tags);
 
     let zip = new ZipStream();
     zip.pipe(stream);
@@ -32,8 +36,6 @@ function listenForMessages(subscriptionNameOrId = 'dmii2-9', timeout = 60) {
     });
 
     let queue = [];
-    const tags = JSON.parse(message.data)[0];
-    const tagmode = JSON.parse(message.data)[1];
 
     await photoModel
       .getFlickrPhotos(tags, tagmode)
@@ -50,6 +52,15 @@ function listenForMessages(subscriptionNameOrId = 'dmii2-9', timeout = 60) {
 
     addNextFile(queue, zip);
 
+    const database = getDatabase();
+    const ref = database.ref('mathilde/' + new Date().getTime() + '/' + tags);
+    ref.set({
+      [`tag-${tags}`]: {
+        tags: tags,
+        tagmode: tagmode,
+      },
+    });
+
     // "Ack" (acknowledge receipt of) the message
     message.ack();
   };
@@ -60,8 +71,8 @@ function listenForMessages(subscriptionNameOrId = 'dmii2-9', timeout = 60) {
 
 listenForMessages();
 
-async function getStorageStream(storage) {
-  const file = await storage.bucket(process.env.BUCKET).file('public/users/' + 'test-9.zip');
+async function getStorageStream(storage, tags) {
+  const file = await storage.bucket(process.env.BUCKET).file('mathilde/' + tags + '.zip');
   const stream = file.createWriteStream({
     metadata: {
       contentType: 'application/zip',
@@ -78,7 +89,7 @@ function addNextFile(queue, zip) {
   var stream = request(elem.url)
   console.log('stream', elem.name);
 
-  zip.entry(stream, { name: elem.name }, err => {
+  zip.entry(stream, { name: elem.name ? elem.name : 'default' }, err => {
       if(err)
           throw err;
       if(queue.length > 0)

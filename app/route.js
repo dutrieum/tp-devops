@@ -4,7 +4,14 @@ const moment = require('moment');
 
 const {PubSub} = require('@google-cloud/pubsub');
 const { Storage } = require('@google-cloud/storage');
-let lastTagsUploaded = '';
+
+const { getDatabase } = require("firebase-admin/database");
+const { initializeApp } = require("firebase-admin/app");
+const firebaseConfig = {
+  databaseURL: "https://temporaryprojectdmii-default-rtdb.firebaseio.com/",
+};
+const app = initializeApp(firebaseConfig);
+const database = getDatabase();
 
 async function getImages(tags, tagmode, res, zip = false, downloadURL = '') {
   const ejsLocalVariables = {
@@ -26,7 +33,6 @@ async function getImages(tags, tagmode, res, zip = false, downloadURL = '') {
     ejsLocalVariables.invalidParameters = true;
     return res.render('index', ejsLocalVariables);
   }
-
 
   // get photos from flickr public feed api
   if (zip === true) {
@@ -59,7 +65,7 @@ async function quickstart(tags, tagmode) {
     .publishMessage({data: dataBuffer});
 }
 
-async function getSignedURL() {
+async function getSignedURL(tags) {
   const options = {
     action: 'read',
     expires: moment().add(2, 'days').unix() * 1000
@@ -68,10 +74,28 @@ async function getSignedURL() {
   let storage = new Storage();
   const signedUrls = await storage
     .bucket(process.env.BUCKET)
-    .file('public/users/' + 'test-9.zip')
+    .file('mathilde/' + tags + '.zip')
     .getSignedUrl(options);
 
   return signedUrls;
+}
+
+async function getDatabaseData(tags) {
+  let result = false;
+
+  const ref = database.ref('mathilde');
+
+  const snapshot = await ref.once('value');
+  const data = snapshot.val();
+  console.log('Données de firebase lues avec succès :', data);
+
+  Object.values(data).forEach(entry => {
+    if (Object.keys(entry)[0] === tags) {
+      result = true;
+    }
+  });
+
+  return result;
 }
 
 function route(app) {
@@ -80,9 +104,9 @@ function route(app) {
     const tagmode = req.query.tagmode;
     let url = '';
 
-    // console.log('lastTagsUploaded', lastTagsUploaded, tags);
-    if (lastTagsUploaded === tags) {
-      const urls = await getSignedURL();
+    const dbData = await getDatabaseData(tags);
+    if (dbData) {
+      const urls = await getSignedURL(tags);
       url = urls[0];
     }
 
@@ -93,7 +117,6 @@ function route(app) {
     const tags = req.body.tags;
     const tagmode = req.body.tagmode;
     await getImages(tags, tagmode, res, true);
-    lastTagsUploaded = tags;
   });
 }
 
